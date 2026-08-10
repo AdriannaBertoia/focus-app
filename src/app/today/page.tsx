@@ -15,14 +15,29 @@ interface DayData {
   outToday: string[];
 }
 
+interface MeetingPrep {
+  title: string;
+  time: string;
+  description: string;
+  links: string[];
+  prework: string[];
+}
+
 export default function TodayPage() {
   const [data, setData] = useState<DayData | null>(null);
+  const [prep, setPrep] = useState<MeetingPrep[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/today")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
+    Promise.all([
+      fetch("/api/today").then((r) => r.json()),
+      fetch("/api/calendar/prep").then((r) => r.json()),
+    ])
+      .then(([dayData, prepData]) => {
+        setData(dayData);
+        setPrep(prepData.meetings || []);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -51,10 +66,10 @@ export default function TodayPage() {
       <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{data.date}</p>
 
       {/* Intention */}
-      {data.intention && (
+      {data.intention && data.intention !== "---" && data.intention.trim() !== "" && (
         <div
           className="rounded-xl p-4 mb-4"
-          style={{ background: "var(--accent-light)", border: "1px solid rgba(127, 154, 144, 0.15)" }}
+          style={{ background: "var(--lavender-light)", border: "1px solid rgba(167, 139, 250, 0.15)" }}
         >
           <p className="text-sm italic" style={{ color: "var(--accent-hover)" }}>
             {data.intention}
@@ -120,9 +135,9 @@ export default function TodayPage() {
               <div
                 key={i}
                 className="rounded-lg p-3 flex items-center gap-3"
-                style={{ background: "var(--status-info-light)" }}
+                style={{ background: "var(--sky-light)", borderLeft: "3px solid var(--sky)" }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--status-info)" strokeWidth="2" strokeLinecap="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
@@ -132,6 +147,63 @@ export default function TodayPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Meeting Prep — links, docs, pre-work */}
+      {prep.filter((p) => p.links.length > 0 || p.prework.length > 0).length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
+            Meeting Prep
+          </p>
+          <div className="space-y-2">
+            {prep
+              .filter((p) => p.links.length > 0 || p.prework.length > 0)
+              .map((p, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl p-3"
+                  style={{ background: "var(--peach-light)", border: "1px solid var(--peach)" }}
+                >
+                  <p className="font-medium mb-1" style={{ color: "var(--text-primary)" }}>
+                    {p.title}
+                    {p.time && <span style={{ color: "var(--text-secondary)" }}> — {p.time}</span>}
+                  </p>
+                  {p.prework.map((pw, j) => (
+                    <p key={j} style={{ color: "var(--text-secondary)" }}>
+                      {pw}
+                    </p>
+                  ))}
+                  {p.links.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {p.links.map((link, j) => (
+                        <a
+                          key={j}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-lg"
+                          style={{
+                            background: "var(--bg-surface)",
+                            color: "var(--accent)",
+                            border: "1px solid var(--accent-light)",
+                            fontSize: "0.8125rem",
+                            minHeight: "32px",
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                          Link {j + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -168,45 +240,74 @@ export default function TodayPage() {
 }
 
 function TaskList({ items }: { items: { text: string; done: boolean }[] }) {
-  if (!items.length) {
-    return <p className="text-sm" style={{ color: "var(--text-muted)" }}>Nothing here</p>;
+  const [tasks, setTasks] = useState(items);
+
+  useEffect(() => { setTasks(items); }, [items]);
+
+  if (!tasks.length) {
+    return <p style={{ color: "var(--text-muted)" }}>Nothing here</p>;
   }
+
+  const toggleTask = async (idx: number) => {
+    const task = tasks[idx];
+    if (task.done) return; // Don't un-complete
+    setTasks((prev) => prev.map((t, i) => i === idx ? { ...t, done: true } : t));
+    await fetch("/api/tasks/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: task.text }),
+    });
+  };
 
   return (
     <div className="space-y-2">
-      {items.map((item, i) => (
-        <div
-          key={i}
-          className="rounded-lg p-3 flex items-center gap-3"
-          style={{
-            background: "var(--bg-surface)",
-            opacity: item.done ? 0.5 : 1,
-          }}
-        >
+      {tasks.map((item, i) => {
+        const isRecurring = item.text.includes("[RECURRING]");
+        const displayText = item.text.replace("[RECURRING] ", "").replace("[RECURRING]", "");
+        return (
           <div
-            className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0"
+            key={i}
+            className="rounded-lg p-3 flex items-center gap-3"
             style={{
-              borderColor: item.done ? "var(--status-success)" : "var(--text-muted)",
-              background: item.done ? "var(--status-success-light)" : "transparent",
+              background: "var(--bg-surface)",
+              opacity: item.done ? 0.5 : 1,
             }}
           >
-            {item.done && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--status-success)" strokeWidth="3" strokeLinecap="round">
-                <polyline points="20 6 9 17 4 12" />
+            <button
+              onClick={() => toggleTask(i)}
+              className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0"
+              style={{
+                borderColor: item.done ? "var(--status-success)" : "var(--text-muted)",
+                background: item.done ? "var(--status-success-light)" : "transparent",
+                minHeight: "20px",
+                minWidth: "20px",
+              }}
+            >
+              {item.done && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--status-success)" strokeWidth="3" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+            {isRecurring && !item.done && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--peach)" strokeWidth="2.5" strokeLinecap="round" className="shrink-0">
+                <path d="M17 2l4 4-4 4" />
+                <path d="M3 11v-1a4 4 0 014-4h14" />
+                <path d="M7 22l-4-4 4-4" />
+                <path d="M21 13v1a4 4 0 01-4 4H3" />
               </svg>
             )}
+            <span
+              style={{
+                color: "var(--text-primary)",
+                textDecoration: item.done ? "line-through" : "none",
+              }}
+            >
+              {displayText}
+            </span>
           </div>
-          <span
-            className="text-sm"
-            style={{
-              color: "var(--text-primary)",
-              textDecoration: item.done ? "line-through" : "none",
-            }}
-          >
-            {item.text}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -27,13 +27,15 @@ export async function GET() {
         for (const line of lines) {
           const taskMatch = line.match(/^- \[ \] (.+)$/);
           if (taskMatch) {
-            const text = taskMatch[1].trim();
+            const rawText = taskMatch[1].trim();
+            const isRecurring = rawText.includes("[RECURRING]");
+            const text = rawText.replace("[RECURRING] ", "").replace("[RECURRING]", "");
             // Determine energy level from context
             let energy: "low" | "medium" | "high" = "medium";
-            if (text.includes("[RECURRING]") || text.toLowerCase().includes("send")) energy = "low";
+            if (isRecurring || text.toLowerCase().includes("send")) energy = "low";
             if (text.toLowerCase().includes("deep focus") || text.toLowerCase().includes("write")) energy = "high";
 
-            currentTask = { id: text.slice(0, 20), text, energy, done: false };
+            currentTask = { id: rawText, text, energy, done: false, recurring: isRecurring };
             break;
           }
         }

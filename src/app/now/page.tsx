@@ -7,6 +7,7 @@ interface Task {
   text: string;
   energy: "low" | "medium" | "high";
   done: boolean;
+  recurring?: boolean;
 }
 
 interface Meeting {
@@ -45,23 +46,24 @@ export default function NowPage() {
 
   const markDone = async () => {
     if (!currentTask) return;
+    const taskId = currentTask.id;
     setCurrentTask(null);
-    // TODO: API call to mark task complete and load next
     await fetch("/api/tasks/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: currentTask.id }),
+      body: JSON.stringify({ id: taskId }),
     });
     fetchNowData();
   };
 
   const sweepToTomorrow = async () => {
     if (!currentTask) return;
+    const taskId = currentTask.id;
     setCurrentTask(null);
     await fetch("/api/tasks/sweep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: currentTask.id }),
+      body: JSON.stringify({ id: taskId }),
     });
     fetchNowData();
   };
@@ -81,7 +83,8 @@ export default function NowPage() {
         <div
           className="w-full max-w-md rounded-2xl p-6 mb-6"
           style={{
-            background: "var(--bg-surface)",
+            background: "var(--lavender-light)",
+            border: "1px solid rgba(167, 139, 250, 0.2)",
             boxShadow: "var(--shadow-md)",
           }}
         >
@@ -92,6 +95,14 @@ export default function NowPage() {
             Focus on this
           </p>
           <p className="text-xl font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+            {currentTask.recurring && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--peach)" strokeWidth="2" strokeLinecap="round" className="inline mr-2 -mt-1">
+                <path d="M17 2l4 4-4 4" />
+                <path d="M3 11v-1a4 4 0 014-4h14" />
+                <path d="M7 22l-4-4 4-4" />
+                <path d="M21 13v1a4 4 0 01-4 4H3" />
+              </svg>
+            )}
             {currentTask.text}
           </p>
           <div className="flex gap-3">
@@ -139,15 +150,15 @@ export default function NowPage() {
         <div
           className="w-full max-w-md rounded-xl p-4 flex items-center gap-4"
           style={{
-            background: "var(--status-info-light)",
-            border: "1px solid rgba(143, 164, 184, 0.2)",
+            background: "var(--sky-light)",
+            border: "1px solid rgba(124, 196, 232, 0.25)",
           }}
         >
           <div
             className="flex items-center justify-center w-10 h-10 rounded-lg"
             style={{ background: "rgba(143, 164, 184, 0.2)" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-info)" strokeWidth="2" strokeLinecap="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>

@@ -97,9 +97,9 @@ export function BrainDumpFAB() {
         right: "20px",
         width: "56px",
         height: "56px",
-        background: "var(--accent)",
+        background: "linear-gradient(135deg, var(--peach), var(--rose))",
         color: "var(--text-inverse)",
-        boxShadow: "var(--shadow-md)",
+        boxShadow: "0 4px 14px rgba(232, 144, 156, 0.35)",
         zIndex: 60,
       }}
       aria-label="Brain dump"
