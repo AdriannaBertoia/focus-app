@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* Botanical & Calming Design System — Colorful but Gentle */
+/* ADHD-Friendly Botanical Design System */
 :root {
-  /* Backgrounds — bright white with warmth */
-  --bg-base: #FFFFFF;
+  /* Backgrounds — warm linen base, white surface cards */
+  --bg-base: #F7F6F2;
   --bg-surface: #FFFFFF;
   --bg-elevated: #FDFCFA;
-  --bg-hover: #F8F7F4;
+  --bg-hover: #EEEDE8;
 
-  /* Text */
+  /* Text — never pure black */
   --text-primary: #2B2D42;
   --text-secondary: #555B6E;
-  --text-muted: #A8AABC;
+  --text-muted: #8D919E;
   --text-inverse: #FFFFFF;
 
   /* Botanical accent colors */
@@ -28,12 +28,12 @@
   --sunshine: #F5CD60;
   --sunshine-light: #FFFBEB;
 
-  /* Primary accent — soft lavender (calming but present) */
+  /* Primary accent */
   --accent: #A78BFA;
-  --accent-hover: #8B5CF6;
+  --accent-hover: #7C3AED;
   --accent-light: #F3EFFE;
 
-  /* Status — botanical tones */
+  /* Status */
   --status-attention: #F4A97D;
   --status-attention-light: #FEF4ED;
   --status-success: #7BAE7F;
@@ -41,10 +41,13 @@
   --status-info: #7CC4E8;
   --status-info-light: #EDF8FD;
 
-  /* Energy levels — distinct botanical colors */
+  /* Energy levels — for left-edge indicators (15-20% opacity backgrounds) */
   --energy-high: #E8909C;
+  --energy-high-light: #FDF0F2;
   --energy-medium: #F5CD60;
+  --energy-medium-light: #FFFBEB;
   --energy-low: #7BAE7F;
+  --energy-low-light: #EDF7EE;
 
   /* Spacing */
   --radius-sm: 10px;
@@ -52,26 +55,24 @@
   --radius-lg: 18px;
   --radius-xl: 28px;
 
-  /* Shadows — tinted with lavender */
-  --shadow-sm: 0 1px 4px rgba(167, 139, 250, 0.06), 0 1px 2px rgba(0,0,0,0.02);
-  --shadow-md: 0 4px 14px rgba(167, 139, 250, 0.10), 0 2px 4px rgba(0,0,0,0.02);
-  --shadow-lg: 0 8px 28px rgba(167, 139, 250, 0.14), 0 4px 8px rgba(0,0,0,0.03);
+  /* Shadows — subtle warm */
+  --shadow-sm: 0 1px 4px rgba(43, 45, 66, 0.04);
+  --shadow-md: 0 4px 14px rgba(43, 45, 66, 0.07);
+  --shadow-lg: 0 8px 28px rgba(43, 45, 66, 0.10);
 
   /* Fonts */
-  --font-heading: var(--font-heading), 'Josefin Sans', sans-serif;
+  --font-heading: var(--font-heading), 'Lexend', sans-serif;
   --font-body: var(--font-body), 'Sarabun', sans-serif;
 }
 
 @theme inline {
   --color-background: var(--bg-base);
   --color-foreground: var(--text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-mono: monospace;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   background: var(--bg-base);
@@ -83,57 +84,48 @@ body {
 
 h1, h2, h3 {
   font-family: var(--font-heading);
-  letter-spacing: 0.5px;
+  letter-spacing: -0.01em;
 }
 
-/* Large touch targets (48-56px minimum) */
+/* Touch targets */
 button, a, [role="button"] {
   min-height: 48px;
   min-width: 48px;
 }
 
-/* Smooth transitions for all interactions */
+/* Transitions */
 * {
-  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease, opacity 0.2s ease;
 }
 
-/* Remove harsh focus outlines, replace with soft accent */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
-/* Scrollbar styling — subtle */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: 3px;
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+/* Font size minimums */
+html { font-size: 16px; }
+.text-xs { font-size: 0.8125rem !important; }
+.text-sm { font-size: 0.9375rem !important; }
+.text-base { font-size: 1rem !important; }
+
+/* Focus mode animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* Base font size — minimum 12pt (16px) */
-html {
-  font-size: 16px;
+@keyframes timer-progress {
+  from { stroke-dashoffset: 0; }
 }
 
-p, span, div, li, a, button {
-  font-size: inherit;
-  line-height: 1.5;
-}
-
-.text-xs {
-  font-size: 0.8125rem !important; /* 13px minimum */
-}
-
-.text-sm {
-  font-size: 0.9375rem !important; /* 15px */
-}
-
-.text-base {
-  font-size: 1rem !important; /* 16px */
-}
+/* Energy-coded left border utility */
+.energy-border-high { border-left: 4px solid var(--energy-high); }
+.energy-border-medium { border-left: 4px solid var(--energy-medium); }
+.energy-border-low { border-left: 4px solid var(--energy-low); }
