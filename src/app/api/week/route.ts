@@ -264,6 +264,21 @@ export async function GET() {
         meetings = await getCalendarEventsForDate(dateStr);
       }
 
+      // Add recurring tasks for this day of week (if not already in the note)
+      const dayOfWeekLower = dayName.toLowerCase();
+      const recurringByDay: Record<string, string[]> = {
+        monday: ["Create Momentum Report (send blank copy) @ 9:00 AM PST"],
+        tuesday: ["Deep Focus — Momentum Report executive summary @ 10:00 AM PST", "Send Momentum Report @ 1:00 PM PST"],
+        friday: ["Input Time on the Timesheet"],
+      };
+      const recurringForDay = recurringByDay[dayOfWeekLower] || [];
+      for (const item of recurringForDay) {
+        const alreadyExists = tasks.some((t) => t.text.toLowerCase().includes(item.toLowerCase().slice(0, 20)));
+        if (!alreadyExists) {
+          tasks.push({ id: `${dateStr}-recurring-${item.slice(0, 10)}`, text: `[RECURRING] ${item}`, done: false });
+        }
+      }
+
       days.push({ date: dateStr, dayName, shortDate, isToday, meetings, tasks });
     }
 

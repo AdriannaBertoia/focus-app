@@ -201,6 +201,18 @@ export default function WeekPage() {
                 </p>
               )}
 
+              {/* Add task */}
+              <AddTaskInput date={day.date} onAdd={(text) => {
+                setDays((prev) => {
+                  const updated = [...prev];
+                  updated[dayIdx] = {
+                    ...updated[dayIdx],
+                    tasks: [...updated[dayIdx].tasks, { id: `new-${Date.now()}`, text, done: false }],
+                  };
+                  return updated;
+                });
+              }} />
+
               {/* Done count */}
               {doneCount > 0 && (
                 <p className="text-xs mt-3 pt-2" style={{ color: "var(--status-success)", borderTop: "1px solid var(--bg-hover)" }}>
@@ -210,6 +222,57 @@ export default function WeekPage() {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function AddTaskInput({ date, onAdd }: { date: string; onAdd: (text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    onAdd(text.trim());
+    await fetch("/api/tasks/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.trim(), date }),
+    });
+    setText("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full text-left text-sm py-2 px-3 rounded-md mt-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        + Add task
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2">
+      <input
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") setOpen(false); }}
+        placeholder="Task name..."
+        className="w-full text-sm px-3 py-2 rounded-md border outline-none"
+        style={{ borderColor: "var(--bg-muted)", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+      />
+      <div className="flex gap-2 mt-2">
+        <button onClick={submit} className="text-xs px-3 py-1.5 rounded-md" style={{ background: "var(--accent-light)", color: "var(--accent)" }}>
+          Add
+        </button>
+        <button onClick={() => setOpen(false)} className="text-xs px-3 py-1.5 rounded-md" style={{ color: "var(--text-muted)" }}>
+          Cancel
+        </button>
       </div>
     </div>
   );
