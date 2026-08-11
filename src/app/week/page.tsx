@@ -159,8 +159,7 @@ export default function WeekPage() {
                           className="rounded-lg px-3 py-2 cursor-grab active:cursor-grabbing flex items-center gap-2"
                           style={{
                             background: "var(--bg-surface)",
-                            borderLeft: `3px solid ${isRecurring ? "var(--peach)" : "var(--energy-medium)"}`,
-                            boxShadow: "var(--shadow-sm)",
+                            border: "1px solid var(--bg-muted)",
                             opacity: dragItem?.dayIdx === dayIdx && dragItem?.taskIdx === taskIdx ? 0.4 : 1,
                           }}
                         >

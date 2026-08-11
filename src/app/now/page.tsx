@@ -148,7 +148,6 @@ export default function NowPage() {
           style={{
             background: "var(--bg-surface)",
             border: "1px solid var(--bg-muted)",
-            borderLeft: `4px solid var(--energy-${currentTask.energy})`,
           }}
         >
           {currentTask.recurring && (
