@@ -45,10 +45,10 @@
   --radius-md: 10px;
   --radius-lg: 14px;
 
-  /* Shadows — very subtle warm */
-  --shadow-sm: 0 1px 3px rgba(28, 24, 22, 0.04);
-  --shadow-md: 0 4px 12px rgba(28, 24, 22, 0.06);
-  --shadow-lg: 0 8px 24px rgba(28, 24, 22, 0.08);
+  /* Shadows — disabled, using flat white cards */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
 }
 
 @theme inline {
