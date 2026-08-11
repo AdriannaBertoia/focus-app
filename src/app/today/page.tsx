@@ -45,22 +45,10 @@ export default function TodayPage() {
         </p>
       )}
 
-      {/* Priorities — always visible */}
+      {/* Priorities — always visible, crossable */}
       <section className="mb-8">
         <p className="section-label mb-3">Priorities</p>
-        <div className="space-y-2">
-          {data.priorities.map((p, i) => (
-            <div key={i} className="flex items-start gap-3 py-2">
-              <span
-                className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium mt-0.5 shrink-0"
-                style={{ background: "var(--bg-muted)", color: "var(--text-secondary)" }}
-              >
-                {i + 1}
-              </span>
-              <p style={{ color: "var(--text-primary)" }}>{p}</p>
-            </div>
-          ))}
-        </div>
+        <PriorityList items={data.priorities} />
       </section>
 
       {/* Meetings */}
@@ -122,6 +110,42 @@ export default function TodayPage() {
           </div>
         </Accordion>
       )}
+    </div>
+  );
+}
+
+function PriorityList({ items }: { items: string[] }) {
+  const [done, setDone] = useState<boolean[]>(items.map(() => false));
+
+  const toggle = (idx: number) => {
+    setDone((prev) => prev.map((d, i) => i === idx ? !d : d));
+  };
+
+  return (
+    <div className="space-y-2">
+      {items.map((p, i) => (
+        <button
+          key={i}
+          onClick={() => toggle(i)}
+          className="w-full flex items-start gap-3 py-3 px-3 rounded-md text-left"
+          style={{
+            background: done[i] ? "transparent" : "var(--bg-surface)",
+            border: done[i] ? "none" : "1px solid var(--bg-muted)",
+            opacity: done[i] ? 0.4 : 1,
+          }}
+        >
+          <span
+            className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-medium mt-0.5 shrink-0"
+            style={{
+              background: done[i] ? "var(--status-success)" : "var(--bg-muted)",
+              color: done[i] ? "white" : "var(--text-secondary)",
+            }}
+          >
+            {done[i] ? "✓" : i + 1}
+          </span>
+          <p style={{ color: "var(--text-primary)", textDecoration: done[i] ? "line-through" : "none" }}>{p}</p>
+        </button>
+      ))}
     </div>
   );
 }
