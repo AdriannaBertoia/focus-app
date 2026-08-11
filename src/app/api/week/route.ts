@@ -180,8 +180,20 @@ async function getCalendarEventsForDate(dateStr: string): Promise<{ time: string
       events.push({ time, title });
     }
 
-    // Sort by time
-    events.sort((a, b) => a.time.localeCompare(b.time));
+    // Sort by actual time (parse hours for proper numeric sort)
+    events.sort((a, b) => {
+      const parseTime = (t: string) => {
+        const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return 0;
+        let hour = parseInt(match[1]);
+        const min = parseInt(match[2]);
+        const ampm = match[3].toUpperCase();
+        if (ampm === "PM" && hour !== 12) hour += 12;
+        if (ampm === "AM" && hour === 12) hour = 0;
+        return hour * 60 + min;
+      };
+      return parseTime(a.time) - parseTime(b.time);
+    });
     return events;
   } catch (e) {
     console.error("Calendar fetch error:", e);
