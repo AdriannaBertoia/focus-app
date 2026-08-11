@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EditableText } from "@/components/EditableText";
 
 interface DayColumn {
   date: string;
@@ -177,7 +178,24 @@ export default function WeekPage() {
                               <path d="M7 22l-4-4 4-4" /><path d="M21 13v1a4 4 0 01-4 4H3" />
                             </svg>
                           )}
-                          <span className="flex-1 text-sm">{displayText}</span>
+                          <EditableText
+                            text={displayText}
+                            date={day.date}
+                            onSave={(newText) => {
+                              setDays((prev) => {
+                                const updated = [...prev];
+                                updated[dayIdx] = {
+                                  ...updated[dayIdx],
+                                  tasks: updated[dayIdx].tasks.map((t, i) =>
+                                    i === taskIdx ? { ...t, text: isRecurring ? `[RECURRING] ${newText}` : newText } : t
+                                  ),
+                                };
+                                return updated;
+                              });
+                            }}
+                            className="flex-1 text-sm"
+                            style={{ color: "var(--text-primary)" }}
+                          />
                         </div>
                       );
                     })}

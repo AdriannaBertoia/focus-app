@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Accordion } from "@/components/Accordion";
+import { EditableText } from "@/components/EditableText";
 
 interface DayData {
   date: string;
@@ -167,6 +168,10 @@ function TaskList({ items }: { items: { text: string; done: boolean }[] }) {
     });
   };
 
+  const editTask = (idx: number, newText: string) => {
+    setTasks((prev) => prev.map((t, i) => i === idx ? { ...t, text: newText } : t));
+  };
+
   return (
     <div className="space-y-1">
       {tasks.map((item, i) => {
@@ -196,10 +201,17 @@ function TaskList({ items }: { items: { text: string; done: boolean }[] }) {
                 </svg>
               )}
             </button>
-            <span className="text-sm" style={{ color: "var(--text-primary)", textDecoration: item.done ? "line-through" : "none" }}>
-              {isRecurring && <span className="text-xs mr-1" style={{ color: "var(--accent)" }}>↻</span>}
-              {displayText}
-            </span>
+            {isRecurring && <span className="text-xs" style={{ color: "var(--accent)" }}>↻</span>}
+            {item.done ? (
+              <span className="text-sm" style={{ color: "var(--text-primary)", textDecoration: "line-through" }}>{displayText}</span>
+            ) : (
+              <EditableText
+                text={displayText}
+                onSave={(newText) => editTask(i, isRecurring ? `[RECURRING] ${newText}` : newText)}
+                className="text-sm flex-1"
+                style={{ color: "var(--text-primary)" }}
+              />
+            )}
           </div>
         );
       })}
