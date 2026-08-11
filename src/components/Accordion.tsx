@@ -14,45 +14,34 @@ export function Accordion({ title, defaultOpen = false, count, color, children }
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="mb-4">
+    <div className="mb-6">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-2 text-left"
-        style={{ minHeight: "40px" }}
+        className="flex items-center gap-2 py-2 text-left"
+        style={{ minHeight: "36px" }}
       >
-        <div className="flex items-center gap-2">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={color || "var(--text-muted)"}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            style={{
-              transform: open ? "rotate(90deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease",
-            }}
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          <span
-            className="text-xs font-semibold uppercase tracking-wide"
-            style={{ color: color || "var(--text-muted)" }}
-          >
-            {title}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={color || "var(--text-muted)"}
+          strokeWidth="2"
+          strokeLinecap="round"
+          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        <span className="section-label" style={{ color: color || undefined }}>
+          {title}
+        </span>
+        {count !== undefined && count > 0 && (
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {count}
           </span>
-          {count !== undefined && (
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{ background: "var(--bg-hover)", color: "var(--text-muted)" }}
-            >
-              {count}
-            </span>
-          )}
-        </div>
+        )}
       </button>
-      {open && <div className="pl-1">{children}</div>}
+      {open && <div className="mt-2">{children}</div>}
     </div>
   );
 }

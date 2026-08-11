@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
-import { Lexend, Sarabun } from "next/font/google";
+import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { BottomNav } from "@/components/BottomNav";
-import { BrainDumpFAB } from "@/components/BrainDumpFAB";
+import { Sidebar } from "@/components/Sidebar";
 import { RecordingPrompt } from "@/components/RecordingPrompt";
 import { ShutdownSweep } from "@/components/ShutdownSweep";
 
-const sarabun = Sarabun({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-body" });
-const lexend = Lexend({ subsets: ["latin"], variable: "--font-heading" });
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body" });
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-heading" });
 
 export const metadata: Metadata = {
   title: "Focus",
   description: "ADHD-friendly productivity companion",
   manifest: "/manifest.json",
-  themeColor: "#6366F1",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -28,14 +26,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sarabun.variable} ${lexend.variable}`}>
-        <main className="pb-24 min-h-dvh">
-          <RecordingPrompt />
-          <ShutdownSweep />
-          {children}
-        </main>
-        <BrainDumpFAB />
-        <BottomNav />
+      <body className={`${dmSans.variable} ${playfair.variable}`}>
+        <div className="flex min-h-dvh">
+          <Sidebar />
+          <main className="flex-1 min-h-dvh overflow-y-auto">
+            <RecordingPrompt />
+            <ShutdownSweep />
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

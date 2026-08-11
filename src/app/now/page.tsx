@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 
 interface Task {
   id: string;
@@ -19,27 +19,17 @@ interface Meeting {
 export default function NowPage() {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [nextMeeting, setNextMeeting] = useState<Meeting | null>(null);
-  const [greeting, setGreeting] = useState("");
   const [focusMode, setFocusMode] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(25 * 60); // 25 min default
+  const timerDuration = 25 * 60;
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning, Adrianna");
-    else if (hour < 17) setGreeting("Good afternoon, Adrianna");
-    else setGreeting("Good evening, Adrianna");
-    fetchNowData();
-  }, []);
+  useEffect(() => { fetchNowData(); }, []);
 
-  // Timer
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (timerRunning && timerSeconds < timerDuration) {
-      interval = setInterval(() => {
-        setTimerSeconds((s) => s + 1);
-      }, 1000);
+      interval = setInterval(() => setTimerSeconds((s) => s + 1), 1000);
     }
     return () => { if (interval) clearInterval(interval); };
   }, [timerRunning, timerSeconds, timerDuration]);
@@ -52,14 +42,12 @@ export default function NowPage() {
         setCurrentTask(data.currentTask);
         setNextMeeting(data.nextMeeting);
       }
-    } catch (e) {
-      console.error("Failed to fetch now data:", e);
-    }
+    } catch {}
   };
 
   const markDone = async () => {
     if (!currentTask) return;
-    const taskId = currentTask.id;
+    const id = currentTask.id;
     setCurrentTask(null);
     setFocusMode(false);
     setTimerRunning(false);
@@ -67,14 +55,14 @@ export default function NowPage() {
     await fetch("/api/tasks/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: taskId }),
+      body: JSON.stringify({ id }),
     });
     fetchNowData();
   };
 
-  const sweepToTomorrow = async () => {
+  const sweep = async () => {
     if (!currentTask) return;
-    const taskId = currentTask.id;
+    const id = currentTask.id;
     setCurrentTask(null);
     setFocusMode(false);
     setTimerRunning(false);
@@ -82,202 +70,132 @@ export default function NowPage() {
     await fetch("/api/tasks/sweep", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: taskId }),
+      body: JSON.stringify({ id }),
     });
     fetchNowData();
   };
 
-  const startFocus = () => {
-    setFocusMode(true);
-    setTimerRunning(true);
-    setTimerSeconds(0);
-  };
-
-  const exitFocus = () => {
-    setFocusMode(false);
-    setTimerRunning(false);
-    setTimerSeconds(0);
-  };
-
   const progress = timerDuration > 0 ? timerSeconds / timerDuration : 0;
-  const circumference = 2 * Math.PI * 90;
+  const circumference = 2 * Math.PI * 70;
   const dashOffset = circumference * (1 - progress);
   const minutesLeft = Math.max(0, Math.ceil((timerDuration - timerSeconds) / 60));
 
-  // ─── FOCUS MODE: Full-screen, no nav ───
+  // ── Focus Mode ──
   if (focusMode && currentTask) {
-    const energyColor =
-      currentTask.energy === "high" ? "var(--energy-high)" :
-      currentTask.energy === "medium" ? "var(--energy-medium)" : "var(--energy-low)";
-
     return (
-      <div
-        className="fixed inset-0 flex flex-col items-center justify-center px-8"
-        style={{ background: "var(--bg-base)", zIndex: 1000 }}
-      >
-        {/* Exit button — subtle top-right */}
+      <div className="flex flex-col items-center justify-center min-h-dvh px-8" style={{ background: "var(--bg-base)" }}>
         <button
-          onClick={exitFocus}
-          className="absolute top-6 right-6 px-4 py-2 rounded-lg"
-          style={{ color: "var(--text-muted)", background: "var(--bg-hover)", minHeight: "40px" }}
+          onClick={() => { setFocusMode(false); setTimerRunning(false); setTimerSeconds(0); }}
+          className="absolute top-6 right-8 text-sm px-4 py-2 rounded-md"
+          style={{ color: "var(--text-muted)", background: "var(--bg-elevated)" }}
         >
-          Exit focus
+          Exit
         </button>
 
-        {/* Circular timer */}
-        <div className="relative mb-8">
-          <svg width="200" height="200" viewBox="0 0 200 200">
-            {/* Background circle */}
+        <div className="relative mb-10">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="70" fill="none" stroke="var(--bg-muted)" strokeWidth="3" />
             <circle
-              cx="100" cy="100" r="90"
-              fill="none"
-              stroke="var(--bg-hover)"
-              strokeWidth="6"
-            />
-            {/* Progress circle */}
-            <circle
-              cx="100" cy="100" r="90"
-              fill="none"
-              stroke={energyColor}
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              transform="rotate(-90 100 100)"
+              cx="80" cy="80" r="70" fill="none"
+              stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"
+              strokeDasharray={circumference} strokeDashoffset={dashOffset}
+              transform="rotate(-90 80 80)"
               style={{ transition: "stroke-dashoffset 1s linear" }}
             />
           </svg>
-          {/* Time in center */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-light" style={{ color: "var(--text-primary)", fontFamily: "var(--font-heading)" }}>
-              {minutesLeft}
-            </span>
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-              min remaining
-            </span>
+            <span className="text-3xl font-light" style={{ fontFamily: "var(--font-heading), serif" }}>{minutesLeft}</span>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>minutes</span>
           </div>
         </div>
 
-        {/* Task title */}
-        <div className="text-center mb-10 max-w-md">
-          {currentTask.recurring && (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--peach)" strokeWidth="2.5" strokeLinecap="round" className="inline mr-2 -mt-1">
-              <path d="M17 2l4 4-4 4" /><path d="M3 11v-1a4 4 0 014-4h14" />
-              <path d="M7 22l-4-4 4-4" /><path d="M21 13v1a4 4 0 01-4 4H3" />
-            </svg>
-          )}
-          <h1 className="text-xl font-medium" style={{ color: "var(--text-primary)" }}>
-            {currentTask.text}
-          </h1>
-        </div>
+        <h2 className="text-center text-xl mb-8 max-w-md" style={{ color: "var(--text-primary)" }}>
+          {currentTask.text}
+        </h2>
 
-        {/* Action buttons */}
-        <div className="flex gap-4 w-full max-w-sm">
+        <div className="flex gap-4">
           <button
             onClick={() => setTimerRunning(!timerRunning)}
-            className="flex-1 py-4 rounded-xl font-medium"
-            style={{ background: "var(--bg-surface)", color: "var(--text-secondary)", boxShadow: "var(--shadow-sm)" }}
+            className="px-8 py-3 rounded-md text-sm font-medium"
+            style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)" }}
           >
             {timerRunning ? "Pause" : "Resume"}
           </button>
           <button
             onClick={markDone}
-            className="flex-1 py-4 rounded-xl font-medium"
-            style={{ background: "var(--status-success)", color: "var(--text-inverse)" }}
+            className="px-8 py-3 rounded-md text-sm font-medium"
+            style={{ background: "var(--warm-black)", color: "var(--text-inverse)" }}
           >
-            Done
+            Complete
           </button>
         </div>
       </div>
     );
   }
 
-  // ─── NORMAL MODE ───
+  // ── Normal View ──
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-80px)] px-6">
-      <p className="text-sm font-medium mb-8" style={{ color: "var(--text-muted)" }}>
-        {greeting}
-      </p>
+    <div className="max-w-2xl mx-auto px-8 py-12">
+      <p className="text-sm mb-2" style={{ color: "var(--text-muted)" }}>{greeting}, Adrianna</p>
+      <h1 className="mb-10" style={{ fontFamily: "var(--font-heading), serif" }}>What to focus on</h1>
 
       {currentTask ? (
         <div
-          className="w-full max-w-md rounded-2xl p-6 mb-6"
+          className="rounded-lg p-6 mb-6"
           style={{
             background: "var(--bg-surface)",
-            borderLeft: `4px solid ${
-              currentTask.energy === "high" ? "var(--energy-high)" :
-              currentTask.energy === "medium" ? "var(--energy-medium)" : "var(--energy-low)"
-            }`,
-            boxShadow: "var(--shadow-md)",
+            border: "1px solid var(--bg-muted)",
+            borderLeft: `4px solid var(--energy-${currentTask.energy})`,
           }}
         >
-          <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-            Focus on this
-          </p>
-          <p className="text-xl font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-            {currentTask.recurring && (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--peach)" strokeWidth="2.5" strokeLinecap="round" className="inline mr-2 -mt-1">
-                <path d="M17 2l4 4-4 4" /><path d="M3 11v-1a4 4 0 014-4h14" />
-                <path d="M7 22l-4-4 4-4" /><path d="M21 13v1a4 4 0 01-4 4H3" />
-              </svg>
-            )}
+          {currentTask.recurring && (
+            <span className="section-label" style={{ color: "var(--accent)" }}>Recurring</span>
+          )}
+          <p className="text-lg font-medium mt-1 mb-5" style={{ color: "var(--text-primary)" }}>
             {currentTask.text}
           </p>
           <div className="flex gap-3">
             <button
-              onClick={startFocus}
-              className="flex-1 py-3 rounded-xl font-medium"
-              style={{ background: "var(--accent-light)", color: "var(--accent-hover)" }}
+              onClick={() => { setFocusMode(true); setTimerRunning(true); setTimerSeconds(0); }}
+              className="px-5 py-2.5 rounded-md text-sm font-medium"
+              style={{ background: "var(--warm-black)", color: "var(--text-inverse)" }}
             >
               Start Focus
             </button>
             <button
               onClick={markDone}
-              className="flex-1 py-3 rounded-xl font-medium"
-              style={{ background: "var(--status-success-light)", color: "var(--status-success)" }}
+              className="px-5 py-2.5 rounded-md text-sm font-medium"
+              style={{ background: "var(--sage-light)", color: "var(--sage)" }}
             >
               Done
             </button>
             <button
-              onClick={sweepToTomorrow}
-              className="py-3 px-4 rounded-xl font-medium"
-              style={{ background: "var(--bg-hover)", color: "var(--text-secondary)" }}
+              onClick={sweep}
+              className="px-5 py-2.5 rounded-md text-sm font-medium"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-muted)" }}
             >
               Later
             </button>
           </div>
         </div>
       ) : (
-        <div
-          className="w-full max-w-md rounded-2xl p-8 mb-6 text-center"
-          style={{ background: "var(--bg-surface)", boxShadow: "var(--shadow-sm)" }}
-        >
-          <p className="text-lg font-medium" style={{ color: "var(--text-secondary)" }}>
-            Nothing right now
-          </p>
-          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-            Check your tasks when you are ready
-          </p>
+        <div className="rounded-lg p-8 text-center" style={{ background: "var(--bg-surface)", border: "1px solid var(--bg-muted)" }}>
+          <p style={{ color: "var(--text-secondary)" }}>Nothing right now.</p>
+          <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Check your tasks when you are ready.</p>
         </div>
       )}
 
       {nextMeeting && (
-        <div
-          className="w-full max-w-md rounded-xl p-4 flex items-center gap-4"
-          style={{ background: "var(--sky-light)", border: "1px solid var(--sky)" }}
-        >
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg" style={{ background: "rgba(124, 196, 232, 0.2)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E5F8A" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-            </svg>
-          </div>
+        <div className="rounded-lg p-4 mt-4 flex items-center gap-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--bg-muted)" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: "var(--rose)" }} />
           <div>
-            <p className="font-medium" style={{ color: "var(--text-primary)" }}>{nextMeeting.title}</p>
-            <p className="text-xs" style={{ color: "#1E5F8A" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{nextMeeting.title}</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {nextMeeting.time}
-              {nextMeeting.in_minutes !== undefined && (
-                <span style={{ color: "var(--status-attention)" }}> — in {nextMeeting.in_minutes} min</span>
-              )}
+              {nextMeeting.in_minutes !== undefined && ` — in ${nextMeeting.in_minutes} min`}
             </p>
           </div>
         </div>
