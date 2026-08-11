@@ -63,13 +63,19 @@ async function getCalendarEventsForDate(dateStr: string): Promise<{ time: string
       // Check if this event occurs on our target date
       let matches = false;
 
-      // Direct DTSTART match
-      if (block.includes(`DTSTART:${targetDate}`) || block.includes(`DTSTART;VALUE=DATE:${targetDate}`)) {
+      // Direct DTSTART match (various formats)
+      if (block.includes(`DTSTART:${targetDate}`) || 
+          block.includes(`DTSTART;VALUE=DATE:${targetDate}`)) {
         matches = true;
       }
       // DTSTART with timezone
-      const dtMatch = block.match(/DTSTART[^:]*:(\d{8})T/);
-      if (dtMatch && dtMatch[1] === targetDate) {
+      const dtMatchTz = block.match(/DTSTART;TZID=[^:]+:(\d{8})T/);
+      if (dtMatchTz && dtMatchTz[1] === targetDate) {
+        matches = true;
+      }
+      // DTSTART plain with time
+      const dtMatchPlain = block.match(/DTSTART:(\d{8})T/);
+      if (dtMatchPlain && dtMatchPlain[1] === targetDate) {
         matches = true;
       }
       // RRULE weekly on this day
@@ -102,25 +108,70 @@ async function getCalendarEventsForDate(dateStr: string): Promise<{ time: string
 
       // Extract time
       let time = "All Day";
-      const timeMatch = block.match(/DTSTART[^:]*:\d{8}T(\d{2})(\d{2})/);
-      if (timeMatch) {
-        let hour = parseInt(timeMatch[1]);
-        const min = timeMatch[2];
-        // Convert UTC to PST (rough: -7 or -8 hours)
-        hour -= 7;
-        if (hour < 0) hour += 24;
-        const ampm = hour >= 12 ? "PM" : "AM";
-        const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        time = `${h12}:${min} ${ampm}`;
+      // Check for timezone in DTSTART
+      const tzStartMatch = block.match(/DTSTART;TZID=([^:]+):(\d{8})T(\d{2})(\d{2})/);
+      const utcStartMatch = block.match(/DTSTART[^;T]*:(\d{8})T(\d{2})(\d{2})(\d{2})Z/);
+      const plainStartMatch = block.match(/DTSTART[^;]*:(\d{8})T(\d{2})(\d{2})/);
 
-        // Get end time
-        const endMatch = block.match(/DTEND[^:]*:\d{8}T(\d{2})(\d{2})/);
-        if (endMatch) {
-          let endHour = parseInt(endMatch[1]) - 7;
+      let startHour = -1;
+      let startMin = "00";
+
+      if (tzStartMatch) {
+        // Has explicit timezone
+        const tz = tzStartMatch[1];
+        startHour = parseInt(tzStartMatch[3]);
+        startMin = tzStartMatch[4];
+        // Convert to PST if needed
+        if (tz.includes("Eastern")) startHour -= 3;
+        else if (tz.includes("Central")) startHour -= 2;
+        else if (tz.includes("Mountain")) startHour -= 1;
+        // Pacific = no change
+        if (startHour < 0) startHour += 24;
+      } else if (utcStartMatch) {
+        // UTC time (ends with Z)
+        startHour = parseInt(utcStartMatch[2]) - 7; // UTC to PDT
+        startMin = utcStartMatch[3];
+        if (startHour < 0) startHour += 24;
+      } else if (plainStartMatch) {
+        // No timezone specified — assume PST
+        startHour = parseInt(plainStartMatch[2]);
+        startMin = plainStartMatch[3];
+      }
+
+      if (startHour >= 0) {
+        const ampm = startHour >= 12 ? "PM" : "AM";
+        const h12 = startHour > 12 ? startHour - 12 : startHour === 0 ? 12 : startHour;
+        time = `${h12}:${startMin} ${ampm}`;
+
+        // Get end time with same timezone logic
+        const tzEndMatch = block.match(/DTEND;TZID=([^:]+):(\d{8})T(\d{2})(\d{2})/);
+        const utcEndMatch = block.match(/DTEND[^;T]*:(\d{8})T(\d{2})(\d{2})(\d{2})Z/);
+        const plainEndMatch = block.match(/DTEND[^;]*:(\d{8})T(\d{2})(\d{2})/);
+
+        let endHour = -1;
+        let endMin = "00";
+
+        if (tzEndMatch) {
+          const tz = tzEndMatch[1];
+          endHour = parseInt(tzEndMatch[3]);
+          endMin = tzEndMatch[4];
+          if (tz.includes("Eastern")) endHour -= 3;
+          else if (tz.includes("Central")) endHour -= 2;
+          else if (tz.includes("Mountain")) endHour -= 1;
           if (endHour < 0) endHour += 24;
+        } else if (utcEndMatch) {
+          endHour = parseInt(utcEndMatch[2]) - 7;
+          endMin = utcEndMatch[3];
+          if (endHour < 0) endHour += 24;
+        } else if (plainEndMatch) {
+          endHour = parseInt(plainEndMatch[2]);
+          endMin = plainEndMatch[3];
+        }
+
+        if (endHour >= 0) {
           const endAmpm = endHour >= 12 ? "PM" : "AM";
           const endH12 = endHour > 12 ? endHour - 12 : endHour === 0 ? 12 : endHour;
-          time += ` - ${endH12}:${endMatch[2]} ${endAmpm}`;
+          time += ` - ${endH12}:${endMin} ${endAmpm}`;
         }
       }
 
