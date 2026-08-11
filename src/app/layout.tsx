@@ -36,15 +36,6 @@ export default function RootLayout({
         </main>
         <BrainDumpFAB />
         <BottomNav />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js');
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );
