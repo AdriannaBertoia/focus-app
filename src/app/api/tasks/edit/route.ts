@@ -1,49 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-
-const VAULT_PATH = process.env.VAULT_PATH || "/Users/abertoia/Desktop/Second Brain";
-const DAILY_NOTES_DIR = path.join(VAULT_PATH, "06_Daily Notes");
+import { getDb } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    const { oldText, newText, date } = await request.json();
-    if (!oldText || !newText) {
-      return NextResponse.json({ error: "oldText and newText required" }, { status: 400 });
+    const { id, oldText, newText } = await request.json();
+    if (!newText) {
+      return NextResponse.json({ error: "newText is required" }, { status: 400 });
     }
 
-    // Find the note — use provided date or today
-    const targetDate = date || new Date().toISOString().split("T")[0];
-    const d = new Date(targetDate + "T12:00:00");
-    const monthFolder = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    const notePath = path.join(DAILY_NOTES_DIR, monthFolder, `${targetDate}.md`);
+    const sql = getDb();
 
-    let content: string;
-    try {
-      content = await fs.readFile(notePath, "utf-8");
-    } catch {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    // Support both id-based and text-based lookups (backward compat)
+    let result;
+    if (id) {
+      result = await sql`
+        UPDATE tasks SET text = ${newText} WHERE id = ${Number(id)} RETURNING id
+      `;
+    } else if (oldText) {
+      const date = new Date().toISOString().split("T")[0];
+      result = await sql`
+        UPDATE tasks SET text = ${newText}
+        WHERE text = ${oldText} AND date = ${date}
+        RETURNING id
+      `;
+    } else {
+      return NextResponse.json({ error: "id or oldText required" }, { status: 400 });
     }
 
-    // Find and replace the task text (preserve checkbox state)
-    const escapedOld = oldText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(- \\[[ x]\\] )${escapedOld}`);
-    const match = content.match(regex);
-
-    if (match) {
-      content = content.replace(regex, `$1${newText}`);
-      await fs.writeFile(notePath, content);
-      return NextResponse.json({ success: true });
+    if (result.length === 0) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Also try matching without checkbox (for priorities)
-    if (content.includes(oldText)) {
-      content = content.replace(oldText, newText);
-      await fs.writeFile(notePath, content);
-      return NextResponse.json({ success: true });
-    }
-
-    return NextResponse.json({ error: "Text not found in note" }, { status: 404 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Task edit error:", error);
     return NextResponse.json({ error: "Failed to edit" }, { status: 500 });

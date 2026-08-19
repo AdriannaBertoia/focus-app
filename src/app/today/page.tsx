@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { usePolling } from "@/hooks/usePolling";
 import { Accordion } from "@/components/Accordion";
 import { EditableText } from "@/components/EditableText";
 
@@ -21,12 +22,17 @@ export default function TodayPage() {
   const [data, setData] = useState<DayData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/today")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchToday = useCallback(async () => {
+    try {
+      const r = await fetch("/api/today");
+      const d = await r.json();
+      setData(d);
+    } catch {} finally {
+      setLoading(false);
+    }
   }, []);
+
+  usePolling(fetchToday, 60_000);
 
   if (loading) return <div className="p-8"><p style={{ color: "var(--text-muted)" }}>Loading...</p></div>;
   if (!data) return <div className="p-8"><p style={{ color: "var(--text-secondary)" }}>No daily note for today.</p></div>;

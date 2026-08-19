@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { usePolling } from "@/hooks/usePolling";
 
 interface Task {
   id: string;
@@ -24,17 +25,7 @@ export default function NowPage() {
   const [timerRunning, setTimerRunning] = useState(false);
   const timerDuration = 25 * 60;
 
-  useEffect(() => { fetchNowData(); }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (timerRunning && timerSeconds < timerDuration) {
-      interval = setInterval(() => setTimerSeconds((s) => s + 1), 1000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [timerRunning, timerSeconds, timerDuration]);
-
-  const fetchNowData = async () => {
+  const fetchNowData = useCallback(async () => {
     try {
       const res = await fetch("/api/now");
       if (res.ok) {
@@ -43,7 +34,18 @@ export default function NowPage() {
         setNextMeeting(data.nextMeeting);
       }
     } catch {}
-  };
+  }, []);
+
+  // Poll every 30 seconds + re-fetch when tab becomes visible
+  usePolling(fetchNowData, 30_000);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (timerRunning && timerSeconds < timerDuration) {
+      interval = setInterval(() => setTimerSeconds((s) => s + 1), 1000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [timerRunning, timerSeconds, timerDuration]);
 
   const markDone = async () => {
     if (!currentTask) return;

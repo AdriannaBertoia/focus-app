@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-
-const INBOX_DIR = path.join(process.env.VAULT_PATH || "", "00_Inbox");
+import { getDb } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,26 +9,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    // Ensure inbox directory exists
-    await fs.mkdir(INBOX_DIR, { recursive: true });
+    const sql = getDb();
+    const created = timestamp ? new Date(timestamp) : new Date();
 
-    // Create a new brain dump file
-    const date = new Date(timestamp || Date.now());
-    const filename = `brain-dump-${date.toISOString().replace(/[:.]/g, "-")}.md`;
-    const filepath = path.join(INBOX_DIR, filename);
+    const result = await sql`
+      INSERT INTO brain_dumps (text, created_at)
+      VALUES (${text}, ${created.toISOString()})
+      RETURNING id
+    `;
 
-    const content = `---
-type: brain-dump
-created: ${date.toISOString()}
-processed: false
----
-
-${text}
-`;
-
-    await fs.writeFile(filepath, content);
-
-    return NextResponse.json({ success: true, filename });
+    return NextResponse.json({ success: true, id: result[0].id });
   } catch (error) {
     console.error("Brain dump save error:", error);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
@@ -40,21 +27,23 @@ ${text}
 
 export async function GET() {
   try {
-    await fs.mkdir(INBOX_DIR, { recursive: true });
-    const files = await fs.readdir(INBOX_DIR);
-    const dumps = [];
+    const sql = getDb();
 
-    for (const file of files.filter((f) => f.startsWith("brain-dump-"))) {
-      const content = await fs.readFile(path.join(INBOX_DIR, file), "utf-8");
-      const textMatch = content.match(/---\n[\s\S]*?---\n\n([\s\S]*)/);
-      const text = textMatch ? textMatch[1].trim() : content;
-      const createdMatch = content.match(/created: (.+)/);
-      const created = createdMatch ? createdMatch[1] : "";
+    const rows = await sql`
+      SELECT id, text, created_at
+      FROM brain_dumps
+      ORDER BY created_at DESC
+      LIMIT 50
+    `;
 
-      dumps.push({ id: file, text, created, filename: file });
-    }
+    const dumps = rows.map((r) => ({
+      id: String(r.id),
+      text: r.text,
+      created: r.created_at,
+      filename: `brain-dump-${r.id}`,
+    }));
 
-    return NextResponse.json({ dumps: dumps.sort((a, b) => b.created.localeCompare(a.created)) });
+    return NextResponse.json({ dumps });
   } catch (error) {
     console.error("Brain dump read error:", error);
     return NextResponse.json({ dumps: [] });

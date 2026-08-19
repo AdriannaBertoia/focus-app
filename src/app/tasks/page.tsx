@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { usePolling } from "@/hooks/usePolling";
 
 type Energy = "all" | "low" | "medium" | "high";
 
@@ -31,12 +32,17 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<Energy>("all");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/tasks")
-      .then((r) => r.json())
-      .then((data) => { setTasks(data.tasks || []); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchTasks = useCallback(async () => {
+    try {
+      const r = await fetch("/api/tasks");
+      const data = await r.json();
+      setTasks(data.tasks || []);
+    } catch {} finally {
+      setLoading(false);
+    }
   }, []);
+
+  usePolling(fetchTasks, 30_000);
 
   const filtered = filter === "all" ? tasks : tasks.filter((t) => t.energy === filter);
   const incomplete = filtered.filter((t) => !t.done);

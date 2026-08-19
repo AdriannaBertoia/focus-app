@@ -1,70 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { getDb } from "@/lib/db";
 
-const VAULT_PATH = process.env.VAULT_PATH || "/Users/abertoia/Desktop/Second Brain";
-const DAILY_NOTES_DIR = path.join(VAULT_PATH, "06_Daily Notes");
+function inferEnergy(text: string): string {
+  const lower = text.toLowerCase();
+  if (lower.includes("deep focus") || lower.includes("write") || lower.includes("draft") ||
+      lower.includes("review") || lower.includes("strategy") || lower.includes("plan")) {
+    return "high";
+  }
+  if (lower.includes("[recurring]") || lower.includes("send") || lower.includes("forward") ||
+      lower.includes("schedule") || lower.includes("input") || lower.includes("update")) {
+    return "low";
+  }
+  return "medium";
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, date } = await request.json();
-    if (!text || !date) {
-      return NextResponse.json({ error: "text and date required" }, { status: 400 });
+    const { text, date, category, energy } = await request.json();
+    if (!text) {
+      return NextResponse.json({ error: "text is required" }, { status: 400 });
     }
 
-    const targetDate = new Date(date + "T12:00:00");
-    const monthFolder = targetDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    const notePath = path.join(DAILY_NOTES_DIR, monthFolder, `${date}.md`);
+    const sql = getDb();
+    const taskDate = date || new Date().toISOString().split("T")[0];
+    const taskCategory = category || "must";
+    const taskEnergy = energy || inferEnergy(text);
+    const recurring = text.includes("[RECURRING]");
 
-    let content: string;
-    try {
-      content = await fs.readFile(notePath, "utf-8");
-    } catch {
-      // Note doesn't exist — create a minimal one
-      await fs.mkdir(path.join(DAILY_NOTES_DIR, monthFolder), { recursive: true });
-      content = `---
-tags: daily-note
-date: ${date}
----
+    const result = await sql`
+      INSERT INTO tasks (date, text, category, energy, recurring, position)
+      VALUES (
+        ${taskDate},
+        ${text},
+        ${taskCategory},
+        ${taskEnergy},
+        ${recurring},
+        (SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE date = ${taskDate})
+      )
+      RETURNING id
+    `;
 
-# Daily Note — ${date}
-
----
-
-## Top 3 Priorities
-
-1.
-2.
-3.
-
----
-
-## To-Dos
-
-**Must-do:**
-- [ ] ${text}
-
-**Should-do:**
-
-`;
-      await fs.writeFile(notePath, content);
-      return NextResponse.json({ success: true, created: true });
-    }
-
-    // Add to Must-do section
-    const mustDoMarker = "**Must-do:**";
-    if (content.includes(mustDoMarker)) {
-      content = content.replace(
-        mustDoMarker,
-        `${mustDoMarker}\n- [ ] ${text}`
-      );
-    } else {
-      // Append to end
-      content += `\n- [ ] ${text}\n`;
-    }
-
-    await fs.writeFile(notePath, content);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: result[0].id });
   } catch (error) {
     console.error("Add task error:", error);
     return NextResponse.json({ error: "Failed to add task" }, { status: 500 });
