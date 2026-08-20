@@ -44,6 +44,13 @@ export async function GET() {
       ORDER BY date ASC, position ASC, created_at ASC
     `;
 
+    // Fetch recurring tasks
+    const recurringRows = await sql`
+      SELECT id, text, category, energy, days
+      FROM recurring_tasks
+      WHERE active = TRUE
+    `;
+
     // Group by date
     const days = [];
     for (let i = 0; i < 5; i++) {
@@ -53,6 +60,7 @@ export async function GET() {
       const dayName = day.toLocaleDateString("en-US", { weekday: "long" });
       const shortDate = day.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const isToday = dateStr === todayStr;
+      const dayLower = dayName.toLowerCase();
 
       const meetings = meetingRows
         .filter((m) => m.date === dateStr)
@@ -61,7 +69,17 @@ export async function GET() {
 
       const tasks = taskRows
         .filter((t) => t.date === dateStr)
-        .map((t) => ({ id: String(t.id), text: t.text, done: t.done }));
+        .map((t) => ({ id: String(t.id), text: t.text, done: t.done, recurring: false }));
+
+      // Inject recurring tasks for this day of week (if not already in tasks)
+      for (const rt of recurringRows) {
+        if (rt.days.includes(dayLower)) {
+          const alreadyExists = tasks.some((t) => t.text === rt.text || t.text === `[RECURRING] ${rt.text}`);
+          if (!alreadyExists) {
+            tasks.push({ id: `recurring-${rt.id}`, text: rt.text, done: false, recurring: true });
+          }
+        }
+      }
 
       days.push({ date: dateStr, dayName, shortDate, isToday, meetings, tasks });
     }

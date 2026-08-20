@@ -116,6 +116,20 @@ async function migrate() {
   `;
   console.log("  ✓ meeting_notes");
 
+  // ── Recurring Tasks ───────────────────────────────────────────────────────────
+  await sql`
+    CREATE TABLE IF NOT EXISTS recurring_tasks (
+      id SERIAL PRIMARY KEY,
+      text TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'must',
+      energy TEXT NOT NULL DEFAULT 'medium',
+      days TEXT[] NOT NULL DEFAULT '{}',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  console.log("  ✓ recurring_tasks");
+
   console.log("\nMigration complete!");
 }
 

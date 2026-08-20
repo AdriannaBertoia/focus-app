@@ -13,6 +13,15 @@ interface Task {
   category: "must" | "should" | "carry";
 }
 
+interface RecurringTask {
+  id: string;
+  text: string;
+  category: string;
+  energy: string;
+  days: string[];
+  active: boolean;
+}
+
 const energyLabels: Record<Energy, string> = {
   all: "All",
   low: "Low Energy",
@@ -31,6 +40,9 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<Energy>("all");
   const [loading, setLoading] = useState(true);
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
+  const [newRecurring, setNewRecurring] = useState({ text: "", days: [] as string[], category: "must" });
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -42,7 +54,46 @@ export default function TasksPage() {
     }
   }, []);
 
+  const fetchRecurring = useCallback(async () => {
+    try {
+      const r = await fetch("/api/tasks/recurring");
+      const data = await r.json();
+      setRecurringTasks(data.recurring || []);
+    } catch {}
+  }, []);
+
   usePolling(fetchTasks, 30_000);
+
+  useEffect(() => {
+    if (showRecurring) fetchRecurring();
+  }, [showRecurring, fetchRecurring]);
+
+  const addRecurring = async () => {
+    if (!newRecurring.text || newRecurring.days.length === 0) return;
+    await fetch("/api/tasks/recurring", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newRecurring),
+    });
+    setNewRecurring({ text: "", days: [], category: "must" });
+    fetchRecurring();
+  };
+
+  const deleteRecurring = async (id: string) => {
+    await fetch("/api/tasks/recurring", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchRecurring();
+  };
+
+  const toggleDay = (day: string) => {
+    setNewRecurring((prev) => ({
+      ...prev,
+      days: prev.days.includes(day) ? prev.days.filter((d) => d !== day) : [...prev.days, day],
+    }));
+  };
 
   const filtered = filter === "all" ? tasks : tasks.filter((t) => t.energy === filter);
   const incomplete = filtered.filter((t) => !t.done);
@@ -140,6 +191,96 @@ export default function TasksPage() {
           )}
         </>
       )}
+
+      {/* Recurring Tasks Section */}
+      <div className="mt-8 pt-6" style={{ borderTop: "1px solid var(--bg-muted)" }}>
+        <button
+          onClick={() => setShowRecurring(!showRecurring)}
+          className="flex items-center gap-2 text-sm font-medium mb-4"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <span style={{ transform: showRecurring ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▶</span>
+          Recurring Tasks
+        </button>
+
+        {showRecurring && (
+          <div>
+            {/* Add new recurring task */}
+            <div className="rounded-lg p-4 mb-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--bg-muted)" }}>
+              <input
+                type="text"
+                placeholder="Task name..."
+                value={newRecurring.text}
+                onChange={(e) => setNewRecurring((prev) => ({ ...prev, text: e.target.value }))}
+                className="w-full text-sm px-3 py-2 rounded-md mb-3"
+                style={{ background: "var(--bg-elevated)", color: "var(--text-primary)", border: "1px solid var(--bg-muted)" }}
+              />
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {["monday", "tuesday", "wednesday", "thursday", "friday"].map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => toggleDay(day)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium"
+                    style={{
+                      background: newRecurring.days.includes(day) ? "var(--accent)" : "var(--bg-elevated)",
+                      color: newRecurring.days.includes(day) ? "white" : "var(--text-muted)",
+                    }}
+                  >
+                    {day.slice(0, 3).toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={newRecurring.category}
+                  onChange={(e) => setNewRecurring((prev) => ({ ...prev, category: e.target.value }))}
+                  className="text-xs px-2 py-1.5 rounded-md"
+                  style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--bg-muted)" }}
+                >
+                  <option value="must">Must-do</option>
+                  <option value="should">Should-do</option>
+                </select>
+                <button
+                  onClick={addRecurring}
+                  className="px-4 py-1.5 rounded-md text-xs font-medium ml-auto"
+                  style={{ background: "var(--warm-black)", color: "var(--text-inverse)" }}
+                >
+                  Add Recurring
+                </button>
+              </div>
+            </div>
+
+            {/* List existing recurring tasks */}
+            <div className="space-y-2">
+              {recurringTasks.map((rt) => (
+                <div
+                  key={rt.id}
+                  className="rounded-lg p-3 flex items-center gap-3"
+                  style={{ background: "var(--bg-surface)" }}
+                >
+                  <span className="text-xs" style={{ color: "var(--accent)" }}>↻</span>
+                  <div className="flex-1">
+                    <p className="text-sm" style={{ color: "var(--text-primary)" }}>{rt.text}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {rt.days.map((d) => d.slice(0, 3).toUpperCase()).join(", ")}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteRecurring(rt.id)}
+                    className="text-xs px-2 py-1 rounded"
+                    style={{ color: "var(--text-muted)", background: "var(--bg-elevated)" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {recurringTasks.length === 0 && (
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No recurring tasks yet.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
