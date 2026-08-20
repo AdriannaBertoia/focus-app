@@ -200,7 +200,7 @@ export default function MeetingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/meetings")
+    fetch("/api/meetings/notes")
       .then((r) => r.json())
       .then((data) => {
         setMeetings(data.meetings || []);
