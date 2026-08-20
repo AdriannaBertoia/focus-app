@@ -17,18 +17,18 @@ export async function GET() {
     const toStr = friday.toISOString().split("T")[0];
     const todayStr = now.toISOString().split("T")[0];
 
-    // Fetch all meetings and tasks for the week in two queries
+    // Fetch all meetings and tasks for the week, casting date to text for reliable comparison
     const meetingRows = await sql`
-      SELECT date, time, title
+      SELECT date::text as date, time, title
       FROM meetings
-      WHERE date >= ${fromStr} AND date <= ${toStr}
+      WHERE date >= ${fromStr}::date AND date <= ${toStr}::date
       ORDER BY date ASC, time ASC
     `;
 
     const taskRows = await sql`
-      SELECT id, date, text, done
+      SELECT id, date::text as date, text, done
       FROM tasks
-      WHERE date >= ${fromStr} AND date <= ${toStr}
+      WHERE date >= ${fromStr}::date AND date <= ${toStr}::date
       ORDER BY date ASC, position ASC, created_at ASC
     `;
 
@@ -43,11 +43,11 @@ export async function GET() {
       const isToday = dateStr === todayStr;
 
       const meetings = meetingRows
-        .filter((m) => String(m.date).slice(0, 10) === dateStr)
+        .filter((m) => m.date === dateStr)
         .map((m) => ({ time: m.time, title: m.title }));
 
       const tasks = taskRows
-        .filter((t) => String(t.date).slice(0, 10) === dateStr)
+        .filter((t) => t.date === dateStr)
         .map((t) => ({ id: String(t.id), text: t.text, done: t.done }));
 
       days.push({ date: dateStr, dayName, shortDate, isToday, meetings, tasks });
