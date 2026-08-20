@@ -43,11 +43,11 @@ export async function GET() {
       const isToday = dateStr === todayStr;
 
       const meetings = meetingRows
-        .filter((m) => m.date === dateStr)
+        .filter((m) => String(m.date).slice(0, 10) === dateStr)
         .map((m) => ({ time: m.time, title: m.title }));
 
       const tasks = taskRows
-        .filter((t) => t.date === dateStr)
+        .filter((t) => String(t.date).slice(0, 10) === dateStr)
         .map((t) => ({ id: String(t.id), text: t.text, done: t.done }));
 
       days.push({ date: dateStr, dayName, shortDate, isToday, meetings, tasks });
