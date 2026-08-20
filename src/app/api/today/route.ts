@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
+function parseTimeToMinutes(time: string): number {
+  if (time.toLowerCase().includes("all day")) return -1;
+  const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 9999;
+  let hour = parseInt(match[1]);
+  const min = parseInt(match[2]);
+  const ampm = match[3].toUpperCase();
+  if (ampm === "PM" && hour !== 12) hour += 12;
+  if (ampm === "AM" && hour === 12) hour = 0;
+  return hour * 60 + min;
+}
+
 export async function GET() {
   try {
     const sql = getDb();
@@ -43,11 +55,13 @@ export async function GET() {
       WHERE date = ${dateStr}
       ORDER BY time ASC
     `;
-    const meetings = meetingRows.map((m) => ({
-      time: m.time,
-      title: m.title,
-      notes: m.notes || "",
-    }));
+    const meetings = meetingRows
+      .map((m) => ({
+        time: m.time,
+        title: m.title,
+        notes: m.notes || "",
+      }))
+      .sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
 
     // Fetch schedule blocks for today
     const scheduleRows = await sql`
