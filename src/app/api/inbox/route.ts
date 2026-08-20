@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       if (!item.text?.trim()) continue;
 
+      // Skip duplicates — don't re-add items with the same text
+      const existing = await sql`
+        SELECT id FROM inbox_items WHERE text = ${item.text.trim()} LIMIT 1
+      `;
+      if (existing.length > 0) continue;
+
       await sql`
         INSERT INTO inbox_items (text, source, priority)
         VALUES (${item.text.trim()}, ${item.source || "copilot-agent"}, ${item.priority || "should"})
@@ -37,16 +43,22 @@ export async function POST(request: NextRequest) {
       if (body.addToToday) {
         const today = new Date().toISOString().split("T")[0];
         const category = item.priority === "must" ? "must" : "should";
-        await sql`
-          INSERT INTO tasks (date, text, category, energy, position)
-          VALUES (
-            ${today},
-            ${item.text.trim()},
-            ${category},
-            'medium',
-            (SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE date = ${today})
-          )
+        // Also dedupe tasks
+        const existingTask = await sql`
+          SELECT id FROM tasks WHERE text = ${item.text.trim()} AND date = ${today} LIMIT 1
         `;
+        if (existingTask.length === 0) {
+          await sql`
+            INSERT INTO tasks (date, text, category, energy, position)
+            VALUES (
+              ${today},
+              ${item.text.trim()},
+              ${category},
+              'medium',
+              (SELECT COALESCE(MAX(position), 0) + 1 FROM tasks WHERE date = ${today})
+            )
+          `;
+        }
       }
     }
 
