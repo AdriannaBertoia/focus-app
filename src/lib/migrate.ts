@@ -130,6 +130,32 @@ async function migrate() {
   `;
   console.log("  ✓ recurring_tasks");
 
+  // ── Daily Summaries ─────────────────────────────────────────────────────────
+  await sql`
+    CREATE TABLE IF NOT EXISTS daily_summaries (
+      id SERIAL PRIMARY KEY,
+      date DATE NOT NULL UNIQUE,
+      summary TEXT NOT NULL,
+      tasks_completed INT DEFAULT 0,
+      tasks_carried INT DEFAULT 0,
+      highlights TEXT[] DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  console.log("  ✓ daily_summaries");
+
+  // ── Push Subscriptions ──────────────────────────────────────────────────────
+  await sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      endpoint TEXT NOT NULL UNIQUE,
+      keys_p256dh TEXT NOT NULL,
+      keys_auth TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  console.log("  ✓ push_subscriptions");
+
   console.log("\nMigration complete!");
 }
 

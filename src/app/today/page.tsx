@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePolling } from "@/hooks/usePolling";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Accordion } from "@/components/Accordion";
 import { EditableText } from "@/components/EditableText";
 
@@ -18,9 +19,18 @@ interface DayData {
   outToday: string[];
 }
 
+interface Summary {
+  summary: string;
+  tasks_completed: number;
+  tasks_carried: number;
+  highlights: string[];
+}
+
 export default function TodayPage() {
   const [data, setData] = useState<DayData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const { isSupported, isSubscribed, subscribe } = usePushNotifications();
 
   const fetchToday = useCallback(async () => {
     try {
@@ -33,6 +43,17 @@ export default function TodayPage() {
   }, []);
 
   usePolling(fetchToday, 60_000);
+
+  // Fetch yesterday's summary
+  useEffect(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = yesterday.toISOString().split("T")[0];
+    fetch(`/api/summary?date=${dateStr}`)
+      .then((r) => r.json())
+      .then((d) => { if (d) setSummary(d); })
+      .catch(() => {});
+  }, []);
 
   if (loading) return <div className="p-8"><p style={{ color: "var(--text-muted)" }}>Loading...</p></div>;
   if (!data) return <div className="p-8"><p style={{ color: "var(--text-secondary)" }}>No daily note for today.</p></div>;
@@ -116,6 +137,33 @@ export default function TodayPage() {
             ))}
           </div>
         </Accordion>
+      )}
+
+      {/* Yesterday's Summary */}
+      {summary && (
+        <div className="mt-8 pt-6" style={{ borderTop: "1px solid var(--bg-muted)" }}>
+          <p className="section-label mb-3">Yesterday&apos;s Wrap-up</p>
+          <div className="rounded-lg p-4" style={{ background: "var(--bg-surface)", border: "1px solid var(--bg-muted)" }}>
+            <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>{summary.summary}</p>
+            <div className="flex gap-4 text-xs" style={{ color: "var(--text-muted)" }}>
+              <span>✓ {summary.tasks_completed} completed</span>
+              <span>→ {summary.tasks_carried} carried</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Push Notifications */}
+      {isSupported && !isSubscribed && (
+        <div className="mt-6">
+          <button
+            onClick={subscribe}
+            className="text-xs px-4 py-2 rounded-lg"
+            style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)" }}
+          >
+            Enable meeting reminders
+          </button>
+        </div>
       )}
     </div>
   );

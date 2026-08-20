@@ -53,6 +53,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Send push notification if items were created
+    if (created > 0) {
+      try {
+        const origin = request.nextUrl.origin;
+        await fetch(`${origin}/api/push/notify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: `${created} new action item${created > 1 ? "s" : ""}`,
+            body: items.slice(0, 2).map((i) => i.text).join(", "),
+            url: "/tasks",
+          }),
+        });
+      } catch {} // Don't fail the response if push fails
+    }
+
     return NextResponse.json({ success: true, created });
   } catch (error) {
     console.error("Inbox POST error:", error);
