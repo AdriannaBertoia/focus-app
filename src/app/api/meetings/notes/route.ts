@@ -70,40 +70,45 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, date } = body;
 
-    if (!title || !date) {
-      return NextResponse.json({ error: "title and date are required" }, { status: 400 });
+    // Support both single meeting and array format
+    const meetings: typeof body[] = body.meetings ? body.meetings : [body];
+
+    if (meetings.length === 0) {
+      return NextResponse.json({ success: true, created: 0 });
     }
 
     const sql = getDb();
+    let created = 0;
 
-    const result = await sql`
-      INSERT INTO meeting_notes (
-        title, date, time, app, attendees, retain,
-        key_topics, decisions, action_items, questions, next_steps, my_notes, transcript
-      ) VALUES (
-        ${title},
-        ${date},
-        ${body.time || ""},
-        ${body.app || "Teams"},
-        ${body.attendees || ""},
-        ${body.retain || false},
-        ${body.keyTopics || ""},
-        ${body.decisions || ""},
-        ${body.actionItems || ""},
-        ${body.questions || ""},
-        ${body.nextSteps || ""},
-        ${body.myNotes || ""},
-        ${body.transcript || ""}
-      )
-      RETURNING id
-    `;
+    for (const m of meetings) {
+      if (!m.title || !m.date) continue;
 
-    // Also push any action items to the inbox if present
-    if (body.actionItems && body.actionItems.trim()) {
-      const lines = body.actionItems.split("\n").filter((l: string) => l.trim().startsWith("-"));
-      if (lines.length > 0) {
+      await sql`
+        INSERT INTO meeting_notes (
+          title, date, time, app, attendees, retain,
+          key_topics, decisions, action_items, questions, next_steps, my_notes, transcript
+        ) VALUES (
+          ${m.title},
+          ${m.date},
+          ${m.time || ""},
+          ${m.app || "Teams"},
+          ${m.attendees || ""},
+          ${m.retain || false},
+          ${m.keyTopics || ""},
+          ${m.decisions || ""},
+          ${m.actionItems || ""},
+          ${m.questions || ""},
+          ${m.nextSteps || ""},
+          ${m.myNotes || ""},
+          ${m.transcript || ""}
+        )
+      `;
+      created++;
+
+      // Also push any action items to today's tasks
+      if (m.actionItems && m.actionItems.trim()) {
+        const lines = m.actionItems.split("\n").filter((l: string) => l.trim().startsWith("-"));
         const today = new Date().toISOString().split("T")[0];
         for (const line of lines) {
           const text = line.replace(/^-\s*/, "").trim();
@@ -123,7 +128,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, id: result[0].id });
+    return NextResponse.json({ success: true, created });
   } catch (error) {
     console.error("Meeting notes POST error:", error);
     return NextResponse.json({ error: "Failed to save meeting note" }, { status: 500 });
