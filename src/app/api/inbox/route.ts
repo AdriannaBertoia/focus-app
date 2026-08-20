@@ -18,10 +18,7 @@ export async function POST(request: NextRequest) {
     const items: { text: string; source?: string; priority?: "must" | "should" }[] = body.items;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: "Provide a non-empty `items` array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: true, created: 0, message: "No items to process" });
     }
 
     const sql = getDb();
