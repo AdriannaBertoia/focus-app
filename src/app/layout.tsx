@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { RecordingPrompt } from "@/components/RecordingPrompt";
 import { ShutdownSweep } from "@/components/ShutdownSweep";
+import { QuickAddTask } from "@/components/QuickAddTask";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-body" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-heading" });
@@ -33,6 +34,7 @@ export default function RootLayout({
             <RecordingPrompt />
             <ShutdownSweep />
             {children}
+            <QuickAddTask />
           </main>
         </div>
       </body>
